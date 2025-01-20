@@ -1,0 +1,494 @@
+
+///////////////////////Initializing global variables///////////////
+
+//initializing sensor values
+int sensorValueA1 = 0;
+int sensorValueA2 = 0;
+int sensorValueA3 = 0;
+int sensorValueA4 = 0;
+int sensorValueA5 = 0;
+
+int ThreshholdVal = 800;
+
+
+int R1 = 6; //Forward Right motor pin
+int R2 = 7; // Backwards Right motor pin
+int ConR = 10; //speed control right 
+
+int L1 = 4; //Formward Left motor pin
+int L2 = 5;// Backwards Left motor pin
+int ConL = 11; //speed controlleft
+
+
+const int trigPin = 8;   
+const int echoPin = 9;
+
+long duration;   //
+int distance; //distance ultrasonic detects
+int Object = 7; //the threshhold of the object infront of the robot
+
+//insializing light pinds
+int LightA1 = 14;
+int LightA2 = 13;
+int LightA3 = 12;
+int LightA4 = 3;
+int LightA5 = 2;
+
+
+//array
+int array[5] = {0,0,0,0,0};
+
+///////////////////////////////////////////////////////////////
+
+
+////////////////////// pid initializing variables//////////////
+float Kp = 31;  // Proportional gain
+float Ki = 0;  // Integral gain
+float Kd = 21;  // Derivative gain
+
+// PID variables
+float previousError = 0;  // Previous error
+float integral = 0;        // Integral sum
+float error = 0;           // Current error
+float pidOutput = 0;       // PID output
+
+// Desired position (center of the line)
+int setpoint = 0;  // The desired value for the error (center of the line)
+int check = 0;  //a variable that counts how many times the sensor detect all white
+int baseSpeed = 63;  
+
+///////////////////////////////////////////////////
+
+
+
+
+void setup() {
+    Serial.begin(9600);
+
+
+    pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
+    pinMode(echoPin, INPUT); // Sets the echoPin as an Input
+
+    //Motor pins  declaring
+    pinMode(R1, OUTPUT); 
+    pinMode(R2, OUTPUT);
+    pinMode(L1, OUTPUT);
+    pinMode(L2, OUTPUT);
+
+    pinMode(ConL, OUTPUT);
+    pinMode(ConR, OUTPUT);
+
+    Serial.begin(9600); // Starts the serial communication
+
+    
+    pinMode(LightA1, OUTPUT);
+    pinMode(LightA2, OUTPUT);
+    pinMode(LightA3, OUTPUT);
+    pinMode(LightA4, OUTPUT);
+    pinMode(LightA5, OUTPUT); 
+
+}
+
+
+
+//////////////////// Robot controls //////////////////////
+
+
+int calculateError() {
+    int error = 0;
+
+    // Calculate weighted error based on sensor positions 
+    error += (array[0] * -2);  // Leftmost sensor
+    error += (array[1] * -1);  // Second left sensor
+    error += (array[2] * 0);   // Middle sensor
+    error += (array[3] * 1);   // Second right sensor
+    error += (array[4] * 2);   // Rightmost sensor
+
+    return error;
+}
+
+void applyPID() {
+    // Calculate the error (position of the robot relative to the line)
+    error = calculateError();
+
+    // Proportional term
+    float proportional = Kp * error;
+
+    // Integral term
+    integral += error;
+    integral = constrain(integral, -255, 255);  // Limit integral to max and min of conL and ConR
+    float integralTerm = Ki * integral;
+
+    // Derivative term
+    float derivative = error - previousError;
+    float derivativeTerm = Kd * derivative;
+
+    // Sum all the terms
+    pidOutput = proportional + integralTerm + derivativeTerm;
+
+    Serial.println(proportional);
+
+    // Update the previous error
+    previousError = error;
+}
+
+void adjustMotors() {
+
+    // Calculate the motor speed adjustments based on PID output
+    int leftMotorSpeed = baseSpeed + pidOutput;
+    int rightMotorSpeed = baseSpeed - pidOutput;
+
+    // Constrain motor speeds to valid range (0 to 255)
+    leftMotorSpeed = constrain(leftMotorSpeed, 0, 255);
+    rightMotorSpeed = constrain(rightMotorSpeed, 0, 255);
+
+    // Set motor speeds
+    analogWrite(ConL, leftMotorSpeed);
+    analogWrite(ConR, rightMotorSpeed);
+
+    controlmotors();
+
+}
+
+
+void controlmotors(){  ///sets the motor defualted to go straight
+
+ digitalWrite(R1, HIGH);
+ digitalWrite(R2, LOW);
+ digitalWrite(L1, HIGH);
+ digitalWrite(L2, LOW);
+
+}
+ 
+
+
+int readsensorVal(int pinNum) //reads sensor value and spits out sensor value on screen (this was used to through testing but then was supressed for final codes)
+{
+    int sensorValue;
+    sensorValue = analogRead(pinNum);
+/*                                       
+    Serial.print("Sensor Value ");
+    
+    if (pinNum == 15) {
+        Serial.print("A1: ");
+    }
+    if (pinNum == 16) {
+        Serial.print("A2: ");
+    }
+    if (pinNum == 17) {
+        Serial.print("A3: ");
+    }
+
+    if (pinNum == 18) {
+        Serial.print("A4: ");
+    }
+
+    if (pinNum == 19) {
+        Serial.print("A5: ");
+    }
+
+
+    Serial.println(sensorValue);
+     */
+    return sensorValue;
+}
+
+
+
+
+void turnonled(int sensorValueA1, int sensorValueA2, int sensorValueA3, int sensorValueA4, int sensorValueA5) { 
+
+    if (sensorValueA1 > ThreshholdVal) { 
+        digitalWrite(LightA1, HIGH);
+    }
+    else {
+        digitalWrite(LightA1, LOW);
+    }
+
+    if (sensorValueA2 > ThreshholdVal) {
+        digitalWrite(LightA2, HIGH);
+    }
+    else {
+        digitalWrite(LightA2, LOW);
+    }
+
+    if (sensorValueA3 > ThreshholdVal) {
+        digitalWrite(LightA3, HIGH);
+    }
+    else {
+        digitalWrite(LightA3, LOW);
+    }
+
+    if (sensorValueA4 > ThreshholdVal) {
+        digitalWrite(LightA4, HIGH);
+    }
+    else {
+        digitalWrite(LightA4, LOW);
+    }
+
+    if (sensorValueA5 > ThreshholdVal) {
+        digitalWrite(LightA5, HIGH);
+    }
+    else {
+        digitalWrite(LightA5, LOW);
+    }
+}
+
+
+
+//This functoin passes the sensor values to an array of 5 spaces.  Each space coresponds to one of the 5 sensors
+void PassValuetoArray(int sensorValueA1, int sensorValueA2, int sensorValueA3, int sensorValueA4, int sensorValueA5) {  
+
+  if(sensorValueA1 >= ThreshholdVal) {
+    array[4] = 1;
+  }
+  if(sensorValueA2 >= ThreshholdVal) {
+    array[3] = 1;
+  }
+  if(sensorValueA3 >= ThreshholdVal) {
+    array[2] = 1;
+  }
+  if(sensorValueA4 >= ThreshholdVal) {
+    array[1] = 1;
+  }
+  if(sensorValueA5 >= ThreshholdVal) {
+    array[0] = 1;
+  }
+
+  for (int i = 0; i < 5; i++) { //// this for loop was used to print the sensor values on screen for debugging
+    Serial.print(array[i]);
+    Serial.print(" ");  // Print a space between elements
+  }
+  Serial.println();  // Move to the next line after printing the array
+}
+
+
+
+//This function simply resets the array
+void resetArray(){
+  for(int i=0; i < 5; i++) {
+    array[i] = 0;
+  }
+}
+
+
+
+/*
+// moving around object
+void Obsticle() {
+    delay(250);
+    Stop();
+    delay(250);
+    SharpRight();
+    delay(650);
+    Stop();
+    delay(250);
+    Forward();
+    delay(200);
+    Stop();
+    delay(250);
+    SharpLeft();
+    delay(550);
+    Stop();
+    delay(250);
+    Forward();
+    delay(500);
+    Stop();
+    delay(250);
+    SharpLeft();
+    delay(400);
+    Stop();
+    delay(250);
+    Forward();
+    delay(50);
+    Stop();
+    delay(250);
+    SharpRight();
+    delay(850);
+    Stop();
+    delay(250);
+}
+*/
+
+///////// turning functions///////////////
+void Backward() {
+    digitalWrite(R1, LOW);
+    digitalWrite(R2, HIGH);
+    digitalWrite(L1, LOW);
+    digitalWrite(L2, HIGH);
+    analogWrite(ConL, 103);
+    analogWrite(ConR, 100);
+}
+void Stop() {
+    analogWrite(ConL, 0);
+    analogWrite(ConR, 0);
+    digitalWrite(R1, LOW);
+    digitalWrite(R2, LOW);
+    digitalWrite(L1, LOW);
+    digitalWrite(L2, LOW); 
+      delay(500);
+
+
+} 
+
+void SharpLeftTurn() {
+ digitalWrite(R1, HIGH);
+ digitalWrite(R2, LOW);
+ digitalWrite(L1, LOW);
+ digitalWrite(L2, LOW);
+ analogWrite(ConR, baseSpeed);
+ analogWrite(ConL, 0);
+}
+
+void SharpeRightTurn(){ 
+  digitalWrite(R1, LOW);
+ digitalWrite(R2, LOW);
+ digitalWrite(L1, HIGH);
+ digitalWrite(L2, LOW);
+ analogWrite(ConR, 0);
+ analogWrite(ConL, 60);
+
+}
+///This function was used for the uturn that was required in level 3
+void UturnLeft() {
+  Stop();
+  delay(500);
+  digitalWrite(R1, LOW);
+  digitalWrite(R2, LOW);
+  digitalWrite(L1, LOW);
+  digitalWrite(L2, HIGH);
+  analogWrite(ConR, baseSpeed + 30);
+  analogWrite(ConL, baseSpeed + 31);
+  delay(1500);
+  Stop();
+  delay(500);
+  /*
+  digitalWrite(R1, HIGH);
+  digitalWrite(R2, LOW);
+  digitalWrite(L1, HIGH);
+  digitalWrite(L2, LOW);
+  analogWrite(ConR, baseSpeed + 45);
+  analogWrite(ConL, baseSpeed + 45);
+  delay(50);
+  */
+  digitalWrite(R1, HIGH);
+  digitalWrite(R2, LOW);
+  digitalWrite(L1, HIGH);
+  digitalWrite(L2, LOW);
+  analogWrite(ConR, baseSpeed + 36);
+  analogWrite(ConL, baseSpeed + 36);
+  delay(400);
+}
+
+
+// This function checks the front sensor for objects
+void checkObject() {
+  digitalWrite(trigPin, LOW); // Clears the trigPin
+  delayMicroseconds(2); 
+  digitalWrite(trigPin, HIGH); // Sets the trigPin on HIGH state for 10 micro seconds
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW); // Reads the echoPin, returns the sound wave travel time in microseconds
+  duration = pulseIn(echoPin, HIGH); // Calculating the distance
+  distance = duration * 0.034 / 2; 
+  delay(50);
+
+
+
+  if (distance != 0) { //if something is close to the sensor
+    
+    if(distance <= Object) {  //if the object is really close
+        //Obsticle();
+      Serial.println("OBJECT!!!");
+    }
+    Serial.println(distance);
+  }
+}
+
+//This function was used when the robot had to make a sharpe 90 degree turn left
+void Hardleftfunction(){ 
+
+if(array[0] == 1 && array[1] == 1 && array[3] == 0 && array[4] == 0) { //checks that the left two sensors are reading black
+
+    
+    delay(10); //delays a quick second and then below it reads the sensor again to see if the left two sensor are reading the black line again 
+
+    sensorValueA1 = readsensorVal(A1);
+    sensorValueA2 = readsensorVal(A2);
+    sensorValueA3 = readsensorVal(A3);
+    sensorValueA4 = readsensorVal(A4);
+    sensorValueA5 = readsensorVal(A5);
+     PassValuetoArray(sensorValueA1, sensorValueA2, sensorValueA3, sensorValueA4, sensorValueA5);
+
+    if(array[0] == 1 && array[1] == 1 && array[3] == 0 && array[4] == 0) {  ///if the left two sensors again read black then sharpeleft turn is initiated 
+    
+    int Turningleft =1;
+
+      while(Turningleft==1){
+        SharpLeftTurn();
+
+      sensorValueA1 = readsensorVal(A1);
+      sensorValueA2 = readsensorVal(A2);
+      PassValuetoArray(sensorValueA1, sensorValueA2, sensorValueA3, sensorValueA4, sensorValueA5);
+
+      if(array[3]==1|| array[4]==1){  // if one of the right two sensors detect black then it breaks the loop 
+        break;
+      }
+    }
+    SharpeRightTurn(); //auto correct which gets robot facing the line straight on 
+    delay(10);
+  }
+}
+}
+
+
+//function that checks to see if all  the robot sensors are reading white for an extended period of time
+void Whitelinedetected() {   
+
+if(array[0] == 0 && array[1] == 0 && array[2]==0 && array[3] == 0 && array[4] == 0) {
+    check = check + 1;
+  }
+else {
+  check = 0;
+}
+}
+
+//////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////main loop///////////////////////////////////
+void loop() {
+   // read the value from the sensor:
+    sensorValueA1 = readsensorVal(A1);
+    sensorValueA2 = readsensorVal(A2);
+    sensorValueA3 = readsensorVal(A3);
+    sensorValueA4 = readsensorVal(A4);
+    sensorValueA5 = readsensorVal(A5);
+
+    turnonled(sensorValueA1, sensorValueA2, sensorValueA3, sensorValueA4, sensorValueA5);
+
+    PassValuetoArray(sensorValueA1, sensorValueA2, sensorValueA3, sensorValueA4, sensorValueA5);
+
+    
+    Hardleftfunction(); 
+
+
+    Whitelinedetected(); 
+    if (check == 50) {  // if the robot only detects white for a long time it initiates the U turn
+        UturnLeft(); 
+    }
+  
+  
+  // Apply PID control
+    applyPID();
+
+    // Adjust motors based on PID output
+    adjustMotors();
+
+    resetArray();
+
+
+    delay(20); 
+    
+
+}
+
