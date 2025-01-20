@@ -97,7 +97,8 @@ void setup() {
 int calculateError() {
     int error = 0;
 
-    // Calculate weighted error based on sensor positions 
+    // Calculate weighted error based on sensor positions (this is a simplified version)
+    // For example, array[0] is leftmost, array[4] is rightmost
     error += (array[0] * -2);  // Leftmost sensor
     error += (array[1] * -1);  // Second left sensor
     error += (array[2] * 0);   // Middle sensor
